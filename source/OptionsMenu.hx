@@ -64,7 +64,7 @@ class OptionsMenu extends MusicBeatState
 			new BotPlay("Showcase your charts and mods with autoplay."),
 		]),
 
-		new OptionCatagory("Mobile settings", [
+		new OptionCategory("Mobile settings", [
 			new CustomControls("Customise Your Controls For Your Android Device!")
 		])
 		
