@@ -15,6 +15,8 @@ using StringTools;
 
 class DialogueBox extends FlxSpriteGroup
 {
+	var virtualpad:FlxVirtualPad;
+
 	var box:FlxSprite;
 
 	var curCharacter:String = '';
@@ -281,7 +283,7 @@ class DialogueBox extends FlxSpriteGroup
 		}
 		#end
 
-		if (controls.ACCEPT  #if mobile || justTouched #end  && dialogueStarted == true)
+		if (FlxG.keys.justPressed.ENTER #if mobile || justTouched #end  && dialogueStarted == true)
 		{
 			remove(dialogue);
 				
