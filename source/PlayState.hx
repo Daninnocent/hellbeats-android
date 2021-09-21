@@ -63,14 +63,15 @@ import lime.utils.Assets;
 import openfl.display.BlendMode;
 import openfl.display.StageQuality;
 import openfl.filters.ShaderFilter;
+import ui.Mobilecontrols;
 
 #if windows
 import Discord.DiscordClient;
 #end
-#if windows
+
 import Sys;
 import sys.FileSystem;
-#end
+import sys.io.File;
 
 using StringTools;
 
@@ -103,6 +104,7 @@ class PlayState extends MusicBeatState
 
 	var songLength:Float = 0;
 	var kadeEngineWatermark:FlxText;
+	var daninnocentTxt:FlxText;
 	
 	#if windows
 	// Discord RPC variables
@@ -247,6 +249,10 @@ class PlayState extends MusicBeatState
 	public function addObject(object:FlxBasic) { add(object); }
 	public function removeObject(object:FlxBasic) { remove(object); }
 
+	#if mobileC
+	var mcontrols:Mobilecontrols; 
+	#end
+
 
 	override public function create()
 	{
@@ -286,16 +292,22 @@ class PlayState extends MusicBeatState
 		
 		removedVideo = false;
 
-		#if windows
-		executeModchart = FileSystem.exists(Paths.lua(songLowercase  + "/modchart"));
-		if (executeModchart)
-			PlayStateChangeables.Optimize = false;
+		#if llua
+		switch (songLowercase)
+		{
+			case 'blammed' | 'dadbattle' | 'og-blammed' | 'og-thorns' | 'strung-up' | 'tutorial':
+				executeModchart = true;
+			default:
+				executeModchart = false;
+		}
+		trace('tried force enable lol');
 		#end
 		#if !cpp
 		executeModchart = false; // FORCE disable for non cpp targets
+		trace('force disabled');
 		#end
 
-		trace('Mod chart: ' + executeModchart + " - " + Paths.lua(songLowercase + "/modchart"));
+		trace('Mod chart: ' + executeModchart + " - " + Paths.luaAsset(songLowercase + '/modchart'));
 
 		#if windows
 		// Making difficulty text for Discord Rich Presence.
@@ -1037,6 +1049,12 @@ class PlayState extends MusicBeatState
 		botPlayState.borderQuality = 2;
 		if(PlayStateChangeables.botPlay && !loadRep) add(botPlayState);
 
+		daninnocentTxt = new FlxText(876, 648, 348);
+        daninnocentTxt.text = "PORTED BY DANINNOCENT";
+        daninnocentTxt.setFormat(Paths.font("vcr.ttf"), 30, FlxColor.WHITE, RIGHT, FlxTextBorderStyle.OUTLINE,FlxColor.BLACK);
+        daninnocentTxt.scrollFactor.set();
+        add(daninnocentTxt);
+
 		iconP1 = new HealthIcon(SONG.player1, true);
 		iconP1.y = healthBar.y - (iconP1.height / 2);
 		add(iconP1);
@@ -1053,6 +1071,7 @@ class PlayState extends MusicBeatState
 		iconP2.cameras = [camHUD];
 		scoreTxt.cameras = [camHUD];
 		doof.cameras = [camHUD];
+		daninnocentTxt.cameras = [camHUD];
 		if (FlxG.save.data.songPosition)
 		{
 			songPosBG.cameras = [camHUD];
@@ -1061,6 +1080,29 @@ class PlayState extends MusicBeatState
 		kadeEngineWatermark.cameras = [camHUD];
 		if (loadRep)
 			replayTxt.cameras = [camHUD];
+
+		#if mobileC
+		mcontrols = new Mobilecontrols();
+		switch (mcontrols.mode)
+		{
+			case VIRTUALPAD_RIGHT | VIRTUALPAD_LEFT | VIRTUALPAD_CUSTOM:
+				controls.setVirtualPad(mcontrols._virtualPad, FULL, NONE);
+			case HITBOX:
+				controls.setHitBox(mcontrols._hitbox);
+			default:
+		}
+		trackedinputs = controls.trackedinputs;
+		controls.trackedinputs = [];
+
+		var camcontrol = new FlxCamera();
+		FlxG.cameras.add(camcontrol);
+		camcontrol.bgColor.alpha = 0;
+		mcontrols.cameras = [camcontrol];
+
+		mcontrols.visible = false;
+
+		add(mcontrols);
+	    #end
 
 		// if (SONG.song == 'South')
 		// FlxG.camera.alpha = 0.7;
@@ -1272,12 +1314,16 @@ class PlayState extends MusicBeatState
 
 	var luaWiggles:Array<WiggleEffect> = [];
 
-	#if windows
+	#if llua
 	public static var luaModchart:ModchartState = null;
 	#end
 
 	function startCountdown():Void
 	{
+		#if mobileC
+		mcontrols.visible = true;
+		#end
+
 		inCutscene = false;
 
 		generateStaticArrows(0);
@@ -1952,7 +1998,7 @@ class PlayState extends MusicBeatState
 
 
 		
-		#if windows
+		#if llua
 		if (executeModchart && luaModchart != null && songStarted)
 		{
 			luaModchart.setVar('songPos',Conductor.songPosition);
@@ -2078,7 +2124,7 @@ class PlayState extends MusicBeatState
 			}
 		}
 
-		if (controls.PAUSE && startedCountdown && canPause)
+		if (FlxG.keys.justPressed.ENTER  #if android || FlxG.android.justReleased.BACK #end  && startedCountdown && canPause)
 		{
 			persistentUpdate = false;
 			persistentDraw = true;
@@ -2110,7 +2156,7 @@ class PlayState extends MusicBeatState
 			#end
 			FlxG.switchState(new ChartingState());
 			FlxG.stage.removeEventListener(KeyboardEvent.KEY_DOWN,handleInput);
-			#if windows
+			#if llua
 			if (luaModchart != null)
 			{
 				luaModchart.die();
@@ -2162,7 +2208,7 @@ class PlayState extends MusicBeatState
 
 			FlxG.switchState(new AnimationDebug(SONG.player2));
 			FlxG.stage.removeEventListener(KeyboardEvent.KEY_DOWN,handleInput);
-			#if windows
+			#if llua
 			if (luaModchart != null)
 			{
 				luaModchart.die();
@@ -2175,7 +2221,7 @@ class PlayState extends MusicBeatState
 		{
 			FlxG.switchState(new AnimationDebug(SONG.player1));
 			FlxG.stage.removeEventListener(KeyboardEvent.KEY_DOWN,handleInput);
-			#if windows
+			#if llua
 			if (luaModchart != null)
 			{
 				luaModchart.die();
@@ -2321,7 +2367,7 @@ class PlayState extends MusicBeatState
 				}
 			}
 			
-			#if windows
+			#if llua
 			if (luaModchart != null)
 				luaModchart.setVar("mustHit",PlayState.SONG.notes[Std.int(curStep / 16)].mustHitSection);
 			#end
@@ -2330,7 +2376,7 @@ class PlayState extends MusicBeatState
 			{
 				var offsetX = 0;
 				var offsetY = 0;
-				#if windows
+				#if llua
 				if (luaModchart != null)
 				{
 					offsetX = luaModchart.getVar("followXOffset", "float");
@@ -2338,7 +2384,7 @@ class PlayState extends MusicBeatState
 				}
 				#end
 				camFollow.setPosition(dad.getMidpoint().x + 150 + offsetX, dad.getMidpoint().y - 100 + offsetY);
-				#if windows
+				#if llua
 				if (luaModchart != null)
 					luaModchart.executeState('playerTwoTurn', []);
 				#end
@@ -2364,7 +2410,7 @@ class PlayState extends MusicBeatState
 			{
 				var offsetX = 0;
 				var offsetY = 0;
-				#if windows
+				#if llua
 				if (luaModchart != null)
 				{
 					offsetX = luaModchart.getVar("followXOffset", "float");
@@ -2373,7 +2419,7 @@ class PlayState extends MusicBeatState
 				#end
 				camFollow.setPosition(boyfriend.getMidpoint().x - 100 + offsetX, boyfriend.getMidpoint().y - 100 + offsetY);
 
-				#if windows
+				#if llua
 				if (luaModchart != null)
 					luaModchart.executeState('playerOneTurn', []);
 				#end
@@ -2620,7 +2666,7 @@ class PlayState extends MusicBeatState
 							});
 						}
 	
-						#if windows
+						#if llua
 						if (luaModchart != null)
 							luaModchart.executeState('playerTwoSing', [Math.abs(daNote.noteData), Conductor.songPosition]);
 						#end
@@ -2725,6 +2771,10 @@ class PlayState extends MusicBeatState
 
 	function endSong():Void
 	{
+		#if mobileC
+		mcontrols.visible = false;
+		#end
+
 		songEnded = true;
 		var songLowercase = StringTools.replace(SONG.song, " ", "-").toLowerCase();
 		switch (songLowercase) {
@@ -2743,19 +2793,19 @@ class PlayState extends MusicBeatState
 			if (isStoryMode)
 				campaignMisses = misses;
 
-			if (!loadRep)
+			/*if (!loadRep)
 				rep.SaveReplay(saveNotes, saveJudge, replayAna);
 			else
 			{
 				PlayStateChangeables.botPlay = false;
 				PlayStateChangeables.scrollSpeed = 1;
 				PlayStateChangeables.useDownscroll = false;
-			}
+			}*/
 
 			if (FlxG.save.data.fpsCap > 290)
 				(cast (Lib.current.getChildAt(0), Main)).setFPSCap(290);
 
-			#if windows
+			#if llua
 			if (luaModchart != null)
 			{
 				luaModchart.die();
@@ -2818,7 +2868,7 @@ class PlayState extends MusicBeatState
 								} else {
 									FlxG.switchState(new EndingDialogue());
 								}
-								#if windows
+								#if llua
 								if (luaModchart != null)
 								{
 									luaModchart.die();
@@ -2831,7 +2881,9 @@ class PlayState extends MusicBeatState
 			
 								if (SONG.validScore)
 								{
+									#if newgrounds
 									NGio.unlockMedal(60961);
+									#end
 									Highscore.saveWeekScore(storyWeek, campaignScore, storyDifficulty);
 								}
 			
@@ -3214,7 +3266,7 @@ class PlayState extends MusicBeatState
 					controls.UP_R,
 					controls.RIGHT_R
 				];
-				#if windows
+				#if llua
 				if (luaModchart != null){
 				if (controls.LEFT_P){luaModchart.executeState('keyPressed',["left"]);};
 				if (controls.DOWN_P){luaModchart.executeState('keyPressed',["down"]);};
@@ -3232,12 +3284,6 @@ class PlayState extends MusicBeatState
 					releaseArray = [false, false, false, false];
 				} 
 
-				var anas:Array<Ana> = [null,null,null,null];
-
-				for (i in 0...pressArray.length)
-					if (pressArray[i])
-						anas[i] = new Ana(Conductor.songPosition, null, false, "miss", i);
-
 				// HOLDS, check for sustain notes
 				if (holdArray.contains(true) && /*!boyfriend.stunned && */ generatedMusic)
 				{
@@ -3248,113 +3294,127 @@ class PlayState extends MusicBeatState
 					});
 				}
 		 
-				if (KeyBinds.gamepad && !FlxG.keys.justPressed.ANY)
+				// PRESSES, check for note hits
+				if (pressArray.contains(true) && /*!boyfriend.stunned && */ generatedMusic)
 				{
-					// PRESSES, check for note hits
-					if (pressArray.contains(true) && generatedMusic)
+					boyfriend.holdTimer = 0;
+		 
+					var possibleNotes:Array<Note> = []; // notes that can be hit
+					var directionList:Array<Int> = []; // directions that can be hit
+					var dumbNotes:Array<Note> = []; // notes to kill later
+					var directionsAccounted:Array<Bool> = [false,false,false,false]; // we don't want to do judgments for more than one presses
+					
+					notes.forEachAlive(function(daNote:Note)
 					{
-						boyfriend.holdTimer = 0;
-			
-						var possibleNotes:Array<Note> = []; // notes that can be hit
-						var directionList:Array<Int> = []; // directions that can be hit
-						var dumbNotes:Array<Note> = []; // notes to kill later
-						var directionsAccounted:Array<Bool> = [false,false,false,false]; // we don't want to do judgments for more than one presses
-						
-						notes.forEachAlive(function(daNote:Note)
+						if (daNote.canBeHit && daNote.mustPress && !daNote.tooLate && !daNote.wasGoodHit)
+						{
+							if (!directionsAccounted[daNote.noteData])
 							{
-								if (daNote.canBeHit && daNote.mustPress && !daNote.tooLate && !daNote.wasGoodHit && !directionsAccounted[daNote.noteData])
+								if (directionList.contains(daNote.noteData))
 								{
-									if (directionList.contains(daNote.noteData))
-										{
-											directionsAccounted[daNote.noteData] = true;
-											for (coolNote in possibleNotes)
-											{
-												if (coolNote.noteData == daNote.noteData && Math.abs(daNote.strumTime - coolNote.strumTime) < 10)
-												{ // if it's the same note twice at < 10ms distance, just delete it
-													// EXCEPT u cant delete it in this loop cuz it fucks with the collection lol
-													dumbNotes.push(daNote);
-													break;
-												}
-												else if (coolNote.noteData == daNote.noteData && daNote.strumTime < coolNote.strumTime)
-												{ // if daNote is earlier than existing note (coolNote), replace
-													possibleNotes.remove(coolNote);
-													possibleNotes.push(daNote);
-													break;
-												}
-											}
+									directionsAccounted[daNote.noteData] = true;
+									for (coolNote in possibleNotes)
+									{
+										if (coolNote.noteData == daNote.noteData && Math.abs(daNote.strumTime - coolNote.strumTime) < 10)
+										{ // if it's the same note twice at < 10ms distance, just delete it
+											// EXCEPT u cant delete it in this loop cuz it fucks with the collection lol
+											dumbNotes.push(daNote);
+											break;
 										}
-										else
-										{
+										else if (coolNote.noteData == daNote.noteData && daNote.strumTime < coolNote.strumTime)
+										{ // if daNote is earlier than existing note (coolNote), replace
+											possibleNotes.remove(coolNote);
 											possibleNotes.push(daNote);
-											directionList.push(daNote.noteData);
+											break;
 										}
-								}
-						});
-
-						for (note in dumbNotes)
-						{
-							FlxG.log.add("killing dumb ass note at " + note.strumTime);
-							note.kill();
-							notes.remove(note, true);
-							note.destroy();
-						}
-			
-						possibleNotes.sort((a, b) -> Std.int(a.strumTime - b.strumTime));
-						if (perfectMode)
-							goodNoteHit(possibleNotes[0]);
-						else if (possibleNotes.length > 0)
-						{
-							if (!FlxG.save.data.ghost)
-							{
-								for (shit in 0...pressArray.length)
-									{ // if a direction is hit that shouldn't be
-										if (pressArray[shit] && !directionList.contains(shit))
-											noteMiss(shit, null);
 									}
-							}
-							for (coolNote in possibleNotes)
-							{
-								if (pressArray[coolNote.noteData])
+								}
+								else
 								{
-									if (mashViolations != 0)
-										mashViolations--;
-									scoreTxt.color = FlxColor.WHITE;
-									var noteDiff:Float = -(coolNote.strumTime - Conductor.songPosition);
-									anas[coolNote.noteData].hit = true;
-									anas[coolNote.noteData].hitJudge = Ratings.CalculateRating(noteDiff, Math.floor((PlayStateChangeables.safeFrames / 60) * 1000));
-									anas[coolNote.noteData].nearestNote = [coolNote.strumTime,coolNote.noteData,coolNote.sustainLength];
-									goodNoteHit(coolNote);
+									possibleNotes.push(daNote);
+									directionList.push(daNote.noteData);
 								}
 							}
 						}
-						else if (!FlxG.save.data.ghost)
-							{
-								for (shit in 0...pressArray.length)
-									if (pressArray[shit])
-										noteMiss(shit, null);
-							}
+					});
+
+					trace('\nCURRENT LINE:\n' + directionsAccounted);
+		 
+					for (note in dumbNotes)
+					{
+						FlxG.log.add("killing dumb ass note at " + note.strumTime);
+						note.kill();
+						notes.remove(note, true);
+						note.destroy();
+					}
+		 
+					possibleNotes.sort((a, b) -> Std.int(a.strumTime - b.strumTime));
+		 
+					var dontCheck = false;
+
+					for (i in 0...pressArray.length)
+					{
+						if (pressArray[i] && !directionList.contains(i))
+							dontCheck = true;
 					}
 
-					if (!loadRep)
-						for (i in anas)
-							if (i != null)
-								replayAna.anaArray.push(i); // put em all there
+					if (perfectMode)
+						goodNoteHit(possibleNotes[0]);
+					else if (possibleNotes.length > 0 && !dontCheck)
+					{
+						if (!FlxG.save.data.ghost)
+						{
+							for (shit in 0...pressArray.length)
+								{ // if a direction is hit that shouldn't be
+									if (pressArray[shit] && !directionList.contains(shit))
+										noteMiss(shit, null);
+								}
+						}
+						for (coolNote in possibleNotes)
+						{
+							if (pressArray[coolNote.noteData])
+							{
+								if (mashViolations != 0)
+									mashViolations--;
+								scoreTxt.color = FlxColor.WHITE;
+								goodNoteHit(coolNote);
+							}
+						}
+					}
+					else if (!FlxG.save.data.ghost)
+						{
+							for (shit in 0...pressArray.length)
+								if (pressArray[shit])
+									noteMiss(shit, null);
+						}
+
+					if(dontCheck && possibleNotes.length > 0 && FlxG.save.data.ghost && !FlxG.save.data.botplay)
+					{
+						if (mashViolations > 8)
+						{
+							trace('mash violations ' + mashViolations);
+							scoreTxt.color = FlxColor.RED;
+							noteMiss(0,null);
+						}
+						else
+							mashViolations++;
+					}
+
 				}
+				
 				notes.forEachAlive(function(daNote:Note)
 				{
-					if(PlayStateChangeables.useDownscroll && daNote.y > strumLine.y ||
-					!PlayStateChangeables.useDownscroll && daNote.y < strumLine.y)
+					if(FlxG.save.data.downscroll && daNote.y > strumLine.y ||
+					!FlxG.save.data.downscroll && daNote.y < strumLine.y)
 					{
 						// Force good note hit regardless if it's too late to hit it or not as a fail safe
-						if(PlayStateChangeables.botPlay && daNote.canBeHit && daNote.mustPress ||
-						PlayStateChangeables.botPlay && daNote.tooLate && daNote.mustPress)
+						if(FlxG.save.data.botplay && daNote.canBeHit && daNote.mustPress ||
+						FlxG.save.data.botplay && daNote.tooLate && daNote.mustPress)
 						{
 							if(loadRep)
 							{
 								//trace('ReplayNote ' + tmpRepNote.strumtime + ' | ' + tmpRepNote.direction);
-								var n = findByTime(daNote.strumTime);
-								trace(n);
-								if(n != null)
+								if(rep.replay.songNotes.contains(HelperFunctions.truncateFloat(daNote.strumTime, 2)))
 								{
 									goodNoteHit(daNote);
 									boyfriend.holdTimer = daNote.sustainLength;
@@ -3550,7 +3610,7 @@ class PlayState extends MusicBeatState
 					boyfriend.playAnim('singRIGHTmiss', true);
 			}
 
-			#if windows
+			#if llua
 			if (luaModchart != null)
 				luaModchart.executeState('playerOneMiss', [direction, Conductor.songPosition]);
 			#end
@@ -3710,7 +3770,7 @@ class PlayState extends MusicBeatState
 							boyfriend.playAnim('singLEFT', true);
 					}
 		
-					#if windows
+					#if llua
 					if (luaModchart != null)
 						luaModchart.executeState('playerOneSing', [note.noteData, Conductor.songPosition]);
 					#end
@@ -3854,7 +3914,7 @@ class PlayState extends MusicBeatState
 			resyncVocals();
 		}
 
-		#if windows
+		#if llua
 		if (executeModchart && luaModchart != null)
 		{
 			luaModchart.setVar('curStep',curStep);
@@ -3887,7 +3947,7 @@ class PlayState extends MusicBeatState
 			notes.sort(FlxSort.byY, (PlayStateChangeables.useDownscroll ? FlxSort.ASCENDING : FlxSort.DESCENDING));
 		}
 
-		#if windows
+		#if llua
 		if (executeModchart && luaModchart != null)
 		{
 			luaModchart.setVar('curBeat',curBeat);

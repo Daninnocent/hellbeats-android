@@ -9,6 +9,7 @@ import flixel.input.FlxKeyManager;
 import flixel.text.FlxText;
 import flixel.util.FlxColor;
 import flixel.util.FlxTimer;
+import ui.FlxVirtualPad;
 
 using StringTools;
 
@@ -36,6 +37,7 @@ class DialogueBox extends FlxSpriteGroup
 	var nameLeft:FlxText;
 	var nameRight:FlxText;
 	var skipDialogue:FlxText;
+	
 
 	public function new(talkingRight:Bool = true, ?dialogueList:Array<String>)
 	{
@@ -72,7 +74,7 @@ class DialogueBox extends FlxSpriteGroup
 		nameRight.setBorderStyle(OUTLINE, FlxColor.BLACK, 0.5);
 		nameRight.visible = false;
 
-		skipDialogue = new FlxText(0, 680, 0, 'Press Z to skip dialogue.', 32);
+		skipDialogue = new FlxText(0, 680, 0, 'Press A to skip dialogue.', 32);
 		skipDialogue.scrollFactor.set();
 		skipDialogue.font = Paths.font('vcr.ttf');
 		skipDialogue.color = FlxColor.WHITE;
@@ -199,6 +201,9 @@ class DialogueBox extends FlxSpriteGroup
 		// add(dialogue);
 
 		add(skipDialogue);
+
+		virtualpad = new FlxVirtualPad(NONE, A_B);
+		add(virtualpad);
 	}
 
 	var dialogueOpened:Bool = false;
@@ -220,7 +225,7 @@ class DialogueBox extends FlxSpriteGroup
 
 		dropText.text = swagDialogue.text;
 
-		if(FlxG.keys.justPressed.Z && !isEnding){
+		if(virtualpad.buttonA.justPressed && !isEnding){
 			isEnding = true;
 			FlxG.sound.music.fadeOut(2.2, 0);
 
@@ -263,7 +268,20 @@ class DialogueBox extends FlxSpriteGroup
 			dialogueStarted = true;
 		}
 
-		if (PlayerSettings.player1.controls.ACCEPT && dialogueStarted == true)
+		#if mobile
+		var justTouched:Bool = false;
+
+		for (touch in FlxG.touches.list)
+		{
+			justTouched = false;
+
+			if (touch.justReleased){
+				justTouched = true;
+			}
+		}
+		#end
+
+		if (controls.ACCEPT  #if mobile || justTouched #end  && dialogueStarted == true)
 		{
 			remove(dialogue);
 				

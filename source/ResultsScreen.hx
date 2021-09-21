@@ -18,18 +18,22 @@ import flixel.text.FlxText;
 import flixel.tweens.FlxEase;
 import flixel.tweens.FlxTween;
 import flixel.util.FlxColor;
+#if newgrounds
 import io.newgrounds.NG;
+#end
 import lime.app.Application;
 import lime.utils.Assets;
 import flixel.math.FlxMath;
 import flixel.text.FlxText;
 import flixel.input.FlxKeyManager;
+import ui.FlxVirtualPad;
 
 
 using StringTools;
 
 class ResultsScreen extends FlxSubState
 {
+    var virtualpad:FlxVirtualPad;
     public var background:FlxSprite;
     public var text:FlxText;
 
@@ -159,6 +163,9 @@ class ResultsScreen extends FlxSubState
 
         cameras = [FlxG.cameras.list[FlxG.cameras.list.length - 1]];
 
+        virtualpad = new FlxVirtualPad(NONE, A_B);
+		add(virtualpad);
+
 		super.create();
 	}
 
@@ -172,7 +179,7 @@ class ResultsScreen extends FlxSubState
 
         // keybinds
 
-        if (PlayerSettings.player1.controls.ACCEPT)
+        if (virtualpad.buttonA.justPressed)
         {
             music.fadeOut(0.3);
             
